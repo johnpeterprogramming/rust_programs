@@ -1,4 +1,5 @@
-# ![image]({![image](https://user-images.githubusercontent.com/64694222/173200951-acf9fac4-cfc6-4863-9fc0-ac3b06a45322.png)}) rust_programs
+#  rust_programs
+![image]({![image](https://user-images.githubusercontent.com/64694222/173200951-acf9fac4-cfc6-4863-9fc0-ac3b06a45322.png)})
 
 # BOGGLE
 Boggle is a word search game : https://www.puzzle-words.com/boggle-4x4/
