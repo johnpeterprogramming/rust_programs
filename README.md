@@ -1,6 +1,6 @@
 #  rust_programs
-![image](https://user-images.githubusercontent.com/64694222/173200951-acf9fac4-cfc6-4863-9fc0-ac3b06a45322.png)
-<img src="[relative/path/in/repository/to/image.svg](https://user-images.githubusercontent.com/64694222/173200951-acf9fac4-cfc6-4863-9fc0-ac3b06a45322.png)" width="128"/>
+
+<img src="https://user-images.githubusercontent.com/64694222/173200951-acf9fac4-cfc6-4863-9fc0-ac3b06a45322.png" width="128"/>
 
 # BOGGLE
 Boggle is a word search game : https://www.puzzle-words.com/boggle-4x4/
