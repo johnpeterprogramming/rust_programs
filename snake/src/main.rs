@@ -9,7 +9,7 @@ use piston::window::WindowSettings;
 use piston::keyboard::Key;
 
 use rand::{thread_rng, Rng};
-use std::time::{Duration};
+use std::time::Duration;
 use std::thread;
 use std::sync::mpsc;
 
@@ -73,13 +73,12 @@ impl App {
     }
 
     fn pressed(&mut self, btn: &Button) {
-        let last_direction = self.snake.direction.clone();
-        self.snake.direction = match btn {
-            &Button::Keyboard(Key::Up) if last_direction != Direction::Down => Direction::Up,
-            &Button::Keyboard(Key::Down) if last_direction != Direction::Up => Direction::Down,
-            &Button::Keyboard(Key::Left) if last_direction != Direction::Right => Direction::Left,
-            &Button::Keyboard(Key::Right) if last_direction != Direction::Left => Direction::Right,
-            _ => last_direction,
+        self.snake.attempted_direction = match btn {
+            &Button::Keyboard(Key::Up) if self.snake.direction != Direction::Down => Direction::Up,
+            &Button::Keyboard(Key::Down) if self.snake.direction != Direction::Up => Direction::Down,
+            &Button::Keyboard(Key::Left) if self.snake.direction != Direction::Right => Direction::Left,
+            &Button::Keyboard(Key::Right) if self.snake.direction != Direction::Left => Direction::Right,
+            _ => self.snake.direction.clone(),
         }
     }
 }
@@ -87,7 +86,8 @@ impl App {
 
 struct Snake {
     body: LinkedList<(i32, i32)>,
-    direction: Direction
+    direction: Direction,
+    attempted_direction : Direction,
 }
 impl Snake {
     fn render(&mut self, gl: &mut GlGraphics, args: &RenderArgs, grid_size: &i32) {
@@ -107,6 +107,7 @@ impl Snake {
 
     fn update(&mut self) -> (i32, i32) {
         let mut new_head = self.get_head().clone();
+        self.direction = self.attempted_direction.clone();
         match self.direction {
             Direction::Right => new_head.0 += 1,
             Direction::Left => new_head.0 -= 1,
@@ -154,6 +155,7 @@ fn main() {
     let snake = Snake {
         body: LinkedList::from([(1, 0), (0, 0)]),
         direction: Direction::Right,
+        attempted_direction: Direction::Right,
     };
 
     let mut rng = thread_rng();
@@ -171,12 +173,12 @@ fn main() {
 
     let (tx, rx) = mpsc::channel();
 
-    let mut speed = 10;
+    let mut speed = 12;
     thread::spawn(move || {
         loop {
             let wait_thread = thread::spawn(||{thread::sleep(Duration::from_secs(10))});
             wait_thread.join().expect("thread panicked");
-            speed += 2;
+            speed += 1;
             tx.send(speed).unwrap();           
         }
     });
