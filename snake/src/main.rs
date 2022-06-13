@@ -9,6 +9,9 @@ use piston::window::WindowSettings;
 use piston::keyboard::Key;
 
 use rand::{thread_rng, Rng};
+use std::time::{Duration};
+use std::thread;
+use std::sync::mpsc;
 
 
 // Assumes that window size will always be square
@@ -23,7 +26,8 @@ enum Direction {
 
 pub struct App {
     gl: GlGraphics, // OpenGL drawing backend.
-    grid: i32,
+    grid_size: i32,
+    rows_and_columns: i32,
     snake: Snake,
     food: (i32, i32),
     state: GameState,
@@ -42,25 +46,25 @@ impl App {
         // Draw food
         self.gl.draw(args.viewport(), |c:graphics::Context, gl| {
             let transform = c.transform;
-            let square = graphics::rectangle::square((self.food.0 * self.grid) as f64, (self.food.1 * self.grid) as f64, self.grid as f64);  
+            let square = graphics::rectangle::square((self.food.0 * self.grid_size) as f64, (self.food.1 * self.grid_size) as f64, self.grid_size as f64);  
 
             graphics::rectangle(BLUE, square, transform, gl)                      
         });
 
-        self.snake.render(&mut self.gl, args, &self.grid);
+        self.snake.render(&mut self.gl, args, &self.grid_size);
     }
 
     fn update(&mut self, _args: &UpdateArgs) {
         if self.state == GameState::Playing {
-            let butt = self.snake.update();
+            let tail = self.snake.update();
     
-            self.snake.check_collisions(&mut self.state);
+            self.snake.check_collisions(&mut self.state, &self.rows_and_columns);
     
             if self.snake.get_head() == &self.food {
                 let mut rng = thread_rng();
-                let new_pos = (rng.gen_range(0..20), rng.gen_range(0..20));
+                let new_pos = (rng.gen_range(0..self.rows_and_columns), rng.gen_range(0..self.rows_and_columns));
                 self.food = new_pos;
-                self.snake.body.push_back(butt);
+                self.snake.body.push_back(tail);
             }
         }
         else {
@@ -86,7 +90,7 @@ struct Snake {
     direction: Direction
 }
 impl Snake {
-    fn render(&mut self, gl: &mut GlGraphics, args: &RenderArgs, grid: &i32) {
+    fn render(&mut self, gl: &mut GlGraphics, args: &RenderArgs, grid_size: &i32) {
         const RED: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
 
         
@@ -94,7 +98,7 @@ impl Snake {
             let transform = c.transform;
             
             for bodypart in self.body.iter() {
-                let square = graphics::rectangle::square((bodypart.0 * grid) as f64, (bodypart.1 * grid) as f64, *grid as f64);
+                let square = graphics::rectangle::square((bodypart.0 * grid_size) as f64, (bodypart.1 * grid_size) as f64, *grid_size as f64);
                 graphics::rectangle(RED, square, transform, gl)
             }
             
@@ -117,10 +121,10 @@ impl Snake {
         self.body.front().unwrap()
     }
 
-    fn check_collisions (&mut self, state: &mut GameState) {
+    fn check_collisions (&mut self, state: &mut GameState, rows_and_columns: &i32) {
         let mut headless_body = self.body.clone();
         headless_body.pop_front();
-        if (headless_body.contains(self.get_head())) | ((self.get_head().0 > 19) | (self.get_head().0 < 0) | (self.get_head().1 < 0) | (self.get_head().1 > 19))
+        if (headless_body.contains(self.get_head())) | ((self.get_head().0 > rows_and_columns-1) | (self.get_head().0 < 0) | (self.get_head().1 < 0) | (self.get_head().1 > rows_and_columns-1))
         {
             *state = GameState::GameEnd;
             println!("==========YOU LOST===========");
@@ -138,18 +142,14 @@ enum GameState {
 fn main() {
     let opengl = OpenGL::V3_2;
     const WINDOW_SIZE: i32 = 600;
-    const GRID: i32 = 20;
+    const ROWS_AND_COLUMNS: i32 = 40;
 
 
     let mut window: Window = WindowSettings::new("Snake Game", [WINDOW_SIZE as f64, WINDOW_SIZE as f64])
         .graphics_api(opengl)
         .exit_on_esc(true)
         .build()
-        .unwrap();
-
-
-    // let head_size = (WINDOW_SIZE / GRID) as i32;
-    
+        .unwrap();    
 
     let snake = Snake {
         body: LinkedList::from([(1, 0), (0, 0)]),
@@ -157,18 +157,33 @@ fn main() {
     };
 
     let mut rng = thread_rng();
-    let initial_food: (i32, i32) = (rng.gen_range(0..GRID), rng.gen_range(0..GRID));
+    let initial_food: (i32, i32) = (rng.gen_range(0..ROWS_AND_COLUMNS), rng.gen_range(0..ROWS_AND_COLUMNS));
 
     // Create a new game and run it.
     let mut app = App {
         gl: GlGraphics::new(opengl),
-        grid: WINDOW_SIZE / GRID,
+        grid_size: WINDOW_SIZE / ROWS_AND_COLUMNS,
+        rows_and_columns: ROWS_AND_COLUMNS,
         snake, 
         food: initial_food,
         state: GameState::Playing,
     };
 
-    let mut events = Events::new(EventSettings::new()).ups(8);
+    let (tx, rx) = mpsc::channel();
+
+    let mut speed = 10;
+    thread::spawn(move || {
+        loop {
+            let wait_thread = thread::spawn(||{thread::sleep(Duration::from_secs(10))});
+            wait_thread.join().expect("thread panicked");
+            speed += 2;
+            tx.send(speed).unwrap();           
+        }
+    });
+
+    // scheduler.join().expect("Scheduler panicked");
+
+    let mut events = Events::new(EventSettings::new()).ups(speed);
     while let Some(e) = events.next(&mut window) {
         if let Some(args) = e.render_args() {
             app.render(&args);
@@ -182,6 +197,10 @@ fn main() {
             if k.state == ButtonState::Press {
                 app.pressed(&k.button);
             }
+        }
+        let received = rx.try_recv();
+        if let Ok(speed) = received {
+            events.set_ups(speed);
         }
     }
 }
