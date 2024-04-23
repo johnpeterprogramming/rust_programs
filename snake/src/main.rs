@@ -38,7 +38,7 @@ impl App {
         const GREEN: [f32; 4] = [0.0, 1.0, 0.0, 1.0];
         const BLUE: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
         
-        // Clearn screen
+        // Clean screen
         self.gl.draw(args.viewport(), |_c:graphics::Context, gl| {
             graphics::clear(GREEN, gl);                        
         });
